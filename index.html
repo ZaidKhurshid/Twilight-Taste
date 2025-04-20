@@ -1760,30 +1760,33 @@
   document.getElementById("proceed-btn").addEventListener("click", function () {
     const cart = getCart();
     const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    const cash = total + 5; // fixed value just for UI (simulate payment)
+    const cash = total;
     const change = (cash - total).toFixed(2);
     const message = document.getElementById("personal-message").value.trim();
 
     let receiptHTML = `
-      <div style="font-family: monospace; text-align: left;">
-        <h3 style="text-align: center;">TWILIGHT TASTE</h3>
-        <p style="text-align: center; margin-bottom: 10px;">4656 Westwinds Dr NE<br/>Tel: +1(403)-512-5011</p>
-        <hr />
-        <h4 style="text-align: center;">CASH RECEIPT</h4>
-        <hr />
-        <table style="width: 100%; font-size: 14px;">
-          <thead><tr><th>Description</th><th style="text-align:right;">Price</th></tr></thead>
-          <tbody>
-    `;
+  <div id="receipt-content" style="font-family: monospace; text-align: left; background: white; color: black;">
+    <h3 style="text-align: center;">TWILIGHT TASTE</h3>
+    <p style="text-align: center; margin-bottom: 10px;">4656 Westwinds Dr NE<br/>Tel: +1(403)-512-5011</p>
+    <hr />
+    <h4 style="text-align: center;">CASH RECEIPT</h4>
+    <hr />
+    <table style="width: 100%; font-size: 14px;">
+      <thead><tr><th>Description</th><th style="text-align:right;">Price</th></tr></thead>
+      <tbody>
+`;
 
-    cart.forEach(item => {
-      receiptHTML += `
-        <tr>
-          <td>${item.name}</td>
-          <td style="text-align:right;">$${item.price.toFixed(2)}</td>
-        </tr>
-      `;
-    });
+
+cart.forEach(item => {
+  const lineTotal = (item.price * item.qty).toFixed(2);
+  receiptHTML += `
+    <tr>
+      <td>${item.name} x${item.qty}</td>
+      <td style="text-align:right;">$${lineTotal}</td>
+    </tr>
+  `;
+});
+
 
     receiptHTML += `
           </tbody>
@@ -1802,13 +1805,32 @@
     `;
 
     Swal.fire({
-      html: receiptHTML,
-      showConfirmButton: false,
-      width: 400,
-      didOpen: () => {
-        QRCode.toCanvas(document.getElementById("qr-code"), message || "No message", { width: 128 });
-      }
+  html: receiptHTML + `<div class="text-center mt-3"><button id="download-receipt" class="btn btn-sm btn-dark">Download Receipt</button></div>`,
+  showConfirmButton: false,
+  width: 400,
+  didOpen: () => {
+  QRCode.toCanvas(document.getElementById("qr-code"), message || "No message", { width: 128 });
+
+  const captureEl = document.getElementById("receipt-capture");
+  const renderedHTML = document.querySelector('#receipt-content').outerHTML;
+  captureEl.innerHTML = renderedHTML;
+
+  // Regenerate QR inside hidden receipt
+  QRCode.toCanvas(captureEl.querySelector("#qr-code"), message || "No message", { width: 128 });
+
+  document.getElementById("download-receipt").addEventListener("click", () => {
+    html2canvas(captureEl, { scale: 3, useCORS: true }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = 'twilight_receipt.png';
+      link.href = canvas.toDataURL("image/png");
+      link.click();
     });
+  });
+}
+
+});
+
+
 
     // Reset cart & message
     localStorage.removeItem("twilight_cart");
@@ -1817,6 +1839,9 @@
     toggleCart();
   });
 </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<div id="receipt-capture" style="position:absolute; left:-9999px; top:-9999px; width:400px; padding:20px; font-family: monospace; background: white;"></div>
 
 
   </body>
